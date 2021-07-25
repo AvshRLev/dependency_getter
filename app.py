@@ -19,15 +19,52 @@ def index():
         
 @app.route("/<string:package>/<string:version>")
 def get_dep(package, version):
+    version = clean_version(version)
     response = redis_client.get(f'{package}/{version}')
-    print(f'{response} from cache')
     if response is None:
         response = requests.get(f'https://registry.npmjs.org/{package}/{version}')
-        print(f'{response} from node api') 
-        redis_client.set(f'{package}/{version}', json.dumps(response.json()))
-        return response.json()
-    return response
-    
+        if 'description' not in response.json():
+            return response.json()
+        print(f'{extract_deps(response.json())} from node api') 
+        redis_client.setex(f'{package}/{version}', 86400, json.dumps(response.json()))
+        return extract_deps(response.json())
+    print(f'{extract_deps(json.loads(response))} from cache')
+    return extract_deps(json.loads(response))
+
+
+@app.route("/<string:namespace>/<string:package>/<string:version>")
+def get_namespace_dep(namespace, package, version):
+    version = clean_version(version)
+    response = redis_client.get(f'{namespace}/{package}/{version}')
+    if response is None:
+        response = requests.get(f'https://registry.npmjs.org/{namespace}/{package}/{version}')
+        if 'description' not in response.json():
+            return response.json()
+        print(f'{extract_deps(response.json())} from node api') 
+        redis_client.setex(f'{package}/{version}', 86400, json.dumps(response.json()))
+        return extract_deps(response.json())
+    print(f'{extract_deps(json.loads(response))} from cache')
+    return extract_deps(json.loads(response))
+
+def clean_version(version):
+    if version == "*":
+        version = "latest"
+        return version
+    if version[0] == "^" or version[0] == "~":
+        version = version[1:] 
+        return version
+
+def extract_deps(response):
+    deps = {}
+    devDeps = {}
+    if 'dependencies' in response:
+        deps = response['dependencies']
+    if 'devDependencies' in response:
+        devDeps = response['devDependencies']
+    return {
+        "deps": deps,
+        "devDeps": devDeps
+    }
 
 
 if __name__ == '__main__':
