@@ -5,17 +5,23 @@ import redis
 import main
 import json
 
+redis_host = 'localhost'
+redis_port = 6379
+redis_client = redis.StrictRedis(host=redis_host, port=redis_port, decode_responses=True)
+
 BASE = 'http://127.0.0.1:5000/'
 
 class TestAPI(unittest.TestCase):
     def setUp(self):
         main.app.testing = True
         self.app = main.app.test_client()
+        redis_client.del('find-up/3.0.0')
 
     def tearDown(self):
         pass
-    @mock.patch('main.get_from_node_api', return_value="{'locate-path': '^3.0.0'}")
-    def test_get_valid_package_and_version(self, some_mock):
+    
+    
+    def test_get_valid_package_and_version(self):
         response = self.app.get(BASE + 'find-up/3.0.0')
         self.assertEqual(response.get_json()['deps'], {'locate-path': '^3.0.0'})
 
