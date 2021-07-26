@@ -1,36 +1,37 @@
 import unittest
 import requests
 import redis
-import app
+import main
 import json
 
 BASE = 'http://127.0.0.1:5000/'
 
 class TestAPI(unittest.TestCase):
     def setUp(self):
-        pass
+        main.app.testing = True
+        self.app = main.app.test_client()
 
     def tearDown(self):
         pass
 
     def test_get_valid_package_and_version(self):
-        response = requests.get(BASE + 'find-up/3.0.0')
+        response = self.app.get(BASE + 'find-up/3.0.0')
         self.assertEqual(response.json()['deps'], {'locate-path': '^3.0.0'})
 
     def test_get_valid_namespace_package_and_version(self):
-        response = requests.get(BASE + '@babel/types/^7.4.0')
+        response = self.app.get(BASE + '@babel/types/^7.4.0')
         self.assertEqual(response.json()['devDeps'], {'@babel/generator': '^7.4.0', '@babel/parser': '^7.4.0'})
 
     def test_get_invalid_package(self):
-        response = requests.get(BASE + 'qqqqqq/3.0.0')
+        response = self.app.get(BASE + 'qqqqqq/3.0.0')
         self.assertEqual(response.text, 'Not Found')
 
     def test_get_invalid_version(self):
-        response = requests.get(BASE + 'find-up/100.100.100')
+        response = self.app.get(BASE + 'find-up/100.100.100')
         self.assertEqual(response.text, 'version not found: 100.100.100')
 
     def test_get_invalid_name_space(self):
-        response = requests.get(BASE + '@bbbbbbb/types/^7.4.0')
+        response = self.app.get(BASE + '@bbbbbbb/types/^7.4.0')
         self.assertEqual(response.text, 'Not Found')
 
     def test_clean_version(self):
