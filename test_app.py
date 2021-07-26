@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 import requests
 import redis
 import main
@@ -13,8 +14,8 @@ class TestAPI(unittest.TestCase):
 
     def tearDown(self):
         pass
-
-    def test_get_valid_package_and_version(self):
+    @mock.patch('main.get_from_node_api', return_value="{'locate-path': '^3.0.0'}")
+    def test_get_valid_package_and_version(self, some_mock):
         response = self.app.get(BASE + 'find-up/3.0.0')
         self.assertEqual(response.get_json()['deps'], {'locate-path': '^3.0.0'})
 

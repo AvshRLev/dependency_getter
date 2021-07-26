@@ -22,13 +22,11 @@ def get_dep(package, version):
     version = clean_version(version)
     response = get_from_cache(f'{package}/{version}')
     if response is None:
-        response = requests.get(f'https://registry.npmjs.org/{package}/{version}')
+        response = get_from_node_api(f'https://registry.npmjs.org/{package}/{version}')
         if 'description' not in response.json():
             return response.json()
-        print(f'{extract_deps(response.json())} from node api') 
         cache_for_one_day(f'{package}/{version}', response)
         return extract_deps(response.json())
-    print(f'{extract_deps(json.loads(response))} from cache')
     return extract_deps(json.loads(response))
 
 
@@ -37,14 +35,15 @@ def get_namespace_dep(namespace, package, version):
     version = clean_version(version)
     response = get_from_cache(f'{namespace}/{package}/{version}')
     if response is None:
-        response = requests.get(f'https://registry.npmjs.org/{namespace}/{package}/{version}')
+        response = get_from_node_api(f'https://registry.npmjs.org/{namespace}/{package}/{version}')
         if 'description' not in response.json():
-            return response.json()
-        print(f'{extract_deps(response.json())} from node api') 
+            return response.json() 
         cache_for_one_day(f'{namespace}/{package}/{version}', response)
         return extract_deps(response.json())
-    print(f'{extract_deps(json.loads(response))} from cache')
     return extract_deps(json.loads(response))
+
+def get_from_node_api(path_string):
+    return requests.get(path_string)
 
 def cache_for_one_day(path_string, response):
     redis_client.setex(path_string , 86400, json.dumps(response.json()))
