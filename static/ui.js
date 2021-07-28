@@ -17,7 +17,7 @@ function createChildDependeciesListItems(queryPackage, parentID) {
   if (parent.children.length > 0) {
     return;
   }
-  fetch("http://localhost:5000/" + queryPackage)
+  fetch("http://127.0.0.1:5000/" + queryPackage)
     .then((response) => response.json())
     .then((dependencies) => {
       const depList = document.createElement("ul");

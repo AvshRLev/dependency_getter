@@ -1,15 +1,19 @@
 from flask import Flask, request
 from flask.templating import render_template
+from dotenv import load_dotenv
 import redis
 import requests
 import json
 import os
 
-redis_host = 'redis'
+load_dotenv()
+redis_host = os.environ['redis']
 redis_port = 6379
 redis_client = redis.StrictRedis(host=redis_host, port=redis_port, decode_responses=True)
 
-npm_base_url = 'https://registry.npmjs.org/'
+npm_base_url = os.environ['npm_base_url']
+
+# 'https://registry.npmjs.org/'
 
 app = Flask(__name__)
 
