@@ -9,7 +9,7 @@ redis_host = 'localhost'
 redis_port = 6379
 redis_client = redis.StrictRedis(host=redis_host, port=redis_port, decode_responses=True)
 
-npm_base_url = os.environ['NPM_BASE_URL']
+npm_base_url = 'https://registry.npmjs.org/'
 
 app = Flask(__name__)
 
@@ -19,8 +19,13 @@ def index():
         return render_template('index.html')
     if request.method == 'POST':
         package_name = request.form.get('package_name')
-        package_version = request.form.get('pacakage_version')
-        dependencies = requests.get
+        package_version = request.form.get('package_version')
+        dependencies = requests.get(f'http://localhost:5000/{package_name}/{package_version}')
+        if dependencies.status_code != 200:
+            return render_template('index.html', message="Could not retrieve the requested dependency")
+        dependencies = dependencies.json()
+        return render_template('index.html', dependencies=dependencies)
+        # deps=dependencies['deps'], dec_deps=dependencies['devDeps'])
         
 @app.route("/<string:package>/<string:version>", methods=['GET'])
 def get_dep(package, version):
