@@ -6,8 +6,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const title = document.createElement("div");
     title.innerHTML = `${packageName}: ${packageVersion}`;
     let queryPackage = `${packageName}/${packageVersion}`;
+    document.querySelector("#main").innerHTML = "";
     document.querySelector("#main").append(title);
-    const firstList = document.querySelector("#list");
+    document.querySelector("#list").innerHTML = "";
     createChildDependeciesListItems(queryPackage, "list");
   });
 });
@@ -17,7 +18,7 @@ function createChildDependeciesListItems(queryPackage, parentID) {
   if (parent.children.length > 0) {
     return;
   }
-  fetch("http://127.0.0.1:5000/" + queryPackage)
+  fetch("/" + queryPackage)
     .then((response) => response.json())
     .then((dependencies) => {
       const depList = document.createElement("ul");
@@ -41,6 +42,3 @@ function createChildDependeciesListItems(queryPackage, parentID) {
       parent.append(depList);
     });
 }
-
-// ul = document.getElementById("my-list");
-// createChildDependeciesListItems("lala", ul);
