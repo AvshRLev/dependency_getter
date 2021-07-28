@@ -5,7 +5,7 @@ import requests
 import json
 import os
 
-redis_host = 'localhost'
+redis_host = 'redis'
 redis_port = 6379
 redis_client = redis.StrictRedis(host=redis_host, port=redis_port, decode_responses=True)
 
@@ -90,4 +90,4 @@ def extract_deps(response):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
