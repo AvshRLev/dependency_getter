@@ -7,13 +7,12 @@ import json
 import os
 
 load_dotenv()
-redis_host = os.environ['redis']
+redis_host = os.environ.get('REDIS', default='localhost')
 redis_port = 6379
 redis_client = redis.StrictRedis(host=redis_host, port=redis_port, decode_responses=True)
 
-npm_base_url = os.environ['npm_base_url']
+npm_base_url = os.environ.get('NPM_BASE_URL', default='https://registry.npmjs.org/')
 
-# 'https://registry.npmjs.org/'
 
 app = Flask(__name__)
 
@@ -94,4 +93,4 @@ def extract_deps(response):
 
 
 if __name__ == '__main__':
-    app.run(debug=True )
+    app.run(debug=True)
