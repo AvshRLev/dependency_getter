@@ -28,35 +28,34 @@ def index():
             return render_template('index.html', message="Could not retrieve the requested dependency")
         dependencies = dependencies.json()
         return render_template('index.html', dependencies=dependencies)
-        # deps=dependencies['deps'], dec_deps=dependencies['devDeps'])
+
         
 @app.route("/<string:package>/<string:version>", methods=['GET'])
 def get_dep(package, version):
     version = clean_version(version)
-    response = get_from_cache(f'{package}/{version}')
-    if response is None:
-        response = get_from_node_api(f'{npm_base_url}/{package}/{version}')
-        if response.status_code != 200:
-            return {"code": response.status_code, "response": response.json()}
-        cache_for_one_day(f'{package}/{version}', response)
-        return extract_deps(response.json())
-    return extract_deps(json.loads(response))
-
+    response = handle_get_request(f'{package}/{version}')
+    return response
 
 @app.route("/<string:namespace>/<string:package>/<string:version>", methods=['GET'])
 def get_namespace_dep(namespace, package, version):
     version = clean_version(version)
-    response = get_from_cache(f'{namespace}/{package}/{version}')
+    response = handle_get_request(f'{namespace}/{package}/{version}')
+    return response
+
+def handle_get_request(path):
+    response = get_from_cache(path)
     if response is None:
-        response = get_from_node_api(f'{npm_base_url}/{namespace}/{package}/{version}')
-        if response.status_code != 200:
-            return {"code": response.status_code, "response": response.json()}
-        cache_for_one_day(f'{namespace}/{package}/{version}', response)
+        response = get_from_node_api(f'{npm_base_url}/{path}') 
+        cache_for_one_day(path, response)       
         return extract_deps(response.json())
     return extract_deps(json.loads(response))
 
-def get_from_node_api(path_string):
-    return requests.get(path_string)
+
+def get_from_node_api(path):
+    response = requests.get(path)
+    if response.status_code != 200:
+        return {"code": response.status_code, "response": response.json()}    
+    return response
 
 def cache_for_one_day(path_string, response):
     redis_client.setex(path_string , 86400, json.dumps(response.json()))
