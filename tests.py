@@ -1,10 +1,9 @@
 import requests
 import unittest
 from unittest import mock
-import main
+import server
 import os
 import redis
-from main import extract_deps
 
 redis_host = os.environ.get('REDIS', default='localhost')
 redis_port = 6379
@@ -31,11 +30,11 @@ def mocked_get_from_node_api(*args, **kwargs):
 class TestAPI(unittest.TestCase):
 
 
-    @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
+    @mock.patch('server.get_from_node_api', side_effect=mocked_get_from_node_api)
     def test_get_package(self, mock_get):
         # Arrange
-        main.app.testing = True
-        self.app = main.app.test_client()
+        server.app.testing = True
+        self.app = server.app.test_client()
         redis_client.delete('find-up/3.0.0')
 
         # Act
@@ -48,7 +47,7 @@ class TestAPI(unittest.TestCase):
         # Check correct path was called
         self.assertIn(mock.call('https://registry.npmjs.org/find-up/3.0.0'), mock_get.call_args_list)
         # Check response was cached
-        self.assertEqual(main.get_from_cache('find-up/3.0.0')[0:30], '{"dependencies": {"locate-path')
+        self.assertEqual(server.get_from_cache('find-up/3.0.0', redis_client)[0:30], '{"dependencies": {"locate-path')
         # Assert one call was made to mocked function
         self.assertEqual(len(mock_get.call_args_list), 1)
 
@@ -62,11 +61,11 @@ class TestAPI(unittest.TestCase):
         # Assert no other call was made to mocked function
         self.assertEqual(len(mock_get.call_args_list), 1)
 
-    @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
+    @mock.patch('server.get_from_node_api', side_effect=mocked_get_from_node_api)
     def test_get_package_with_namespace(self, mock_get):
         # Arrange
-        main.app.testing = True
-        self.app = main.app.test_client()
+        server.app.testing = True
+        self.app = server.app.test_client()
         redis_client.delete('@namespace/find-up/3.0.0')
 
         # Act
@@ -79,7 +78,7 @@ class TestAPI(unittest.TestCase):
         # Check correct path was called
         self.assertIn(mock.call('https://registry.npmjs.org/@namespace/find-up/3.0.0'), mock_get.call_args_list)
         # Check response was cached
-        self.assertEqual(main.get_from_cache('find-up/3.0.0')[0:30], '{"dependencies": {"locate-path')
+        self.assertEqual(server.get_from_cache('find-up/3.0.0', redis_client)[0:30], '{"dependencies": {"locate-path')
         # Assert one call was made to mocked function
         self.assertEqual(len(mock_get.call_args_list), 1)
 
@@ -93,19 +92,19 @@ class TestAPI(unittest.TestCase):
         # Assert no other call was made to mocked function
         self.assertEqual(len(mock_get.call_args_list), 1)
 
-    @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
+    @mock.patch('server.get_from_node_api', side_effect=mocked_get_from_node_api)
     def test_non_existing_package(self, mock_get):
-        main.app.testing = True
-        self.app = main.app.test_client()
+        server.app.testing = True
+        self.app = server.app.test_client()
         redis_client.delete('non-existent-package/3.3.3')
         response = self.app.get('non-existent-package/3.3.3')
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.data, b'This has returned None')
 
-    @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
+    @mock.patch('server.get_from_node_api', side_effect=mocked_get_from_node_api)
     def test_weird_return_value_package(self, mock_get):
-        main.app.testing = True
-        self.app = main.app.test_client()
+        server.app.testing = True
+        self.app = server.app.test_client()
         redis_client.delete('somethingweird/3.0.0')
         response = self.app.get('somethingweird/3.0.0')
         self.assertEqual(response.status_code, 200)
@@ -114,45 +113,45 @@ class TestAPI(unittest.TestCase):
 class TestUnits(unittest.TestCase):
 
     def test_clean_version(self):
-        version = main.clean_version('^0.0.0')
+        version = server.clean_version('^0.0.0')
         self.assertEqual(version, '0.0.0')
 
-        version = main.clean_version('~0.0.0')
+        version = server.clean_version('~0.0.0')
         self.assertEqual(version, '0.0.0')
 
-        version = main.clean_version('>0.0.0')
+        version = server.clean_version('>0.0.0')
         self.assertEqual(version, 'latest')
 
-        version = main.clean_version('*')
+        version = server.clean_version('*')
         self.assertEqual(version, 'latest')
 
-        version = main.clean_version('0.0.x')
+        version = server.clean_version('0.0.x')
         self.assertEqual(version, '0.0.0')
     
-    @mock.patch('main.requests.get')
+    @mock.patch('server.requests.get')
     def test_get_from_node_api_ok(self, mock_get):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json_data = "Ok"
-        response = main.get_from_node_api('abc/123')
+        response = server.get_from_node_api('abc/123')
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json_data, 'Ok')
 
-    @mock.patch('main.requests.get')
+    @mock.patch('server.requests.get')
     def test_get_from_node_api_not_ok(self, mock_get):
         mock_get.return_value.status_code = 404
-        response = main.get_from_node_api('abc/123')
-        self.assertEqual(response.status_code, 404)
+        response = server.get_from_node_api('abc/123')
+        self.assertEqual(response['code'], 404)
         
 
 class TestIndexRoute(unittest.TestCase):
     def test_home(self):
-        tester = main.app.test_client(self)
+        tester = server.app.test_client(self)
         response = tester.get('/', content_type='html/text')
         self.assertEqual(response.status_code, 200)
         self.assertTrue(b'<!DOCTYPE html>\n<html>\n  <head> \n'  in response.data)
         
     def test_other(self):
-        tester = main.app.test_client(self)
+        tester = server.app.test_client(self)
         response = tester.get('a', content_type='html/text')
         self.assertEqual(response.status_code, 404)
         self.assertTrue( b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML' in response.data)
