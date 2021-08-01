@@ -1,14 +1,14 @@
 from flask import Flask, request
 from flask.templating import render_template
-from flask.wrappers import Response
-from dotenv import load_dotenv
 from data.npm import get_from_node_api
+from data.redis import get_from_cache, cache_for_one_day
+from utils import clean_version, extract_deps
 import redis
 import requests
 import json
 import os
 
-load_dotenv()
+
 redis_host = os.environ.get('REDIS', default='localhost')
 redis_port = 6379
 redis_client = redis.StrictRedis(host=redis_host, port=redis_port, decode_responses=True)
@@ -45,50 +45,14 @@ def get_namespace_dep(namespace, package, version):
     return response
 
 def handle_get_request(path):
-    response = get_from_cache(path)
+    response = get_from_cache(path, redis_client)
     if response is None:
         response = get_from_node_api(f'{npm_base_url}/{path}') 
-        cache_for_one_day(path, response)       
+        cache_for_one_day(path, response, redis_client)       
         return extract_deps(response.json())
     return extract_deps(json.loads(response))
 
 
-
-
-def cache_for_one_day(path_string, response):
-    redis_client.setex(path_string , 86400, json.dumps(response.json()))
-
-def get_from_cache(path_string):
-    return redis_client.get(path_string)
-
-def clean_version(version):
-    if version == "*":
-        version = "latest"
-        return version
-    if version[0] == "^" or version[0] == "~":
-        version = version[1:] 
-        return version
-    if version[0] == ">":
-        version = "latest"
-        return version
-    if version[-1] == "x":
-        version = version.replace("x", "0")
-        return version
-    return version
-
-def extract_deps(response):
-    if response == None:
-        return Response("This has returned None", 404)
-    deps = {}
-    devDeps = {}
-    if 'dependencies' in response:
-        deps = response['dependencies']
-    if 'devDependencies' in response:
-        devDeps = response['devDependencies']
-    return {
-        "deps": deps,
-        "devDeps": devDeps
-    }
 
 
 if __name__ == '__main__':
