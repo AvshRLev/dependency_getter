@@ -21,16 +21,7 @@ app = Flask(__name__)
 def index():
     if request.method == 'GET':
         return render_template('index.html')
-    if request.method == 'POST':
-        package_name = request.form.get('package_name')
-        package_version = request.form.get('package_version')
-        dependencies = requests.get(f'http://localhost:5000/{package_name}/{package_version}')
-        if dependencies.status_code != 200:
-            return render_template('index.html', message="Could not retrieve the requested dependency")
-        dependencies = dependencies.json()
-        return render_template('index.html', dependencies=dependencies)
 
-        
 @app.route("/<string:package>/<string:version>", methods=['GET'])
 def get_dep(package, version):
     version = clean_version(version)
@@ -55,7 +46,7 @@ def handle_get_request(path):
 def get_from_node_api(path):
     response = requests.get(path)
     if response.status_code != 200:
-        return {"code": response.status_code, "response": response.json()}    
+        return Response(response.json() , response.status_code)    
     return response
 
 def cache_for_one_day(path_string, response):

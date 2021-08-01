@@ -1,10 +1,13 @@
-import requests
+from flask.wrappers import Response
+import time
 import unittest
 from unittest import mock
 import main
 import os
 import redis
 from main import extract_deps
+
+
 
 redis_host = os.environ.get('REDIS', default='localhost')
 redis_port = 6379
@@ -25,7 +28,9 @@ def mocked_get_from_node_api(*args, **kwargs):
         return MockResponse({"dependencies":{"locate-path":"^6.0.0"},"devDependencies":{"ava":"^2.1.0"}}, 200)
     elif args[0] == 'https://registry.npmjs.org/somethingweird/3.0.0':
         return MockResponse({"dependencies":{100:100},"devDependencies":{True:"^^^^^^"}}, 256)
-
+    if args[0] == 'https://registry.npmjs.org/request-too-long/3.0.0':
+        time.sleep(1)
+        return MockResponse({"dependencies":{"locate-path":"^6.0.0"},"devDependencies":{"ava":"^2.1.0"}}, 200)
     return MockResponse(None, 404)
 
 class TestAPI(unittest.TestCase):
@@ -111,5 +116,66 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json, {'deps': {'100': 100}, 'devDeps': {'true': '^^^^^^'}})
 
+    @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
+    def test_request_takes_too_long(self, mock_get):
+        main.app.testing = True
+        self.app = main.app.test_client()
+        redis_client.delete('request-too-long/3.0.0')
+        response = self.app.get('request-too-long/3.0.0')
+        with self.subTest(msg='Response Status Code '):
+            self.assertEqual(response.status_code, 500)
+        with self.subTest(msg='Response Message'):
+            self.assertEqual(response.json, "Request Timeout Error")
+        with self.subTest(msg='Response Took Longer Than 0.8 Seconds'):
+            self.assertGreater(response.elapsed.total_seconds(), 0.8)
+    
+
+    
+class TestUnits(unittest.TestCase):
+
+    def test_clean_version(self):
+        version = main.clean_version('^0.0.0')
+        self.assertEqual(version, '0.0.0')
+
+        version = main.clean_version('~0.0.0')
+        self.assertEqual(version, '0.0.0')
+
+        version = main.clean_version('>0.0.0')
+        self.assertEqual(version, 'latest')
+
+        version = main.clean_version('*')
+        self.assertEqual(version, 'latest')
+
+        version = main.clean_version('0.0.x')
+        self.assertEqual(version, '0.0.0')
+    
+    @mock.patch('main.requests.get')
+    def test_get_from_node_api_ok(self, mock_get):
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json_data = "Ok"
+        response = main.get_from_node_api('abc/123')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json_data, 'Ok')
+
+    @mock.patch('main.requests.get')
+    def test_get_from_node_api_not_ok(self, mock_get):
+        mock_get.return_value.status_code = 404
+        response = main.get_from_node_api('abc/123')
+        self.assertEqual(response.status_code, 404)
+        
+
+class TestIndexRoute(unittest.TestCase):
+    def test_home(self):
+        tester = main.app.test_client(self)
+        response = tester.get('/', content_type='html/text')
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(b'<!DOCTYPE html>\n<html>\n  <head> \n'  in response.data)
+        
+    def test_other(self):
+        tester = main.app.test_client(self)
+        response = tester.get('a', content_type='html/text')
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue( b'<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML' in response.data)
+        
 if __name__ == "__main__":
     unittest.main()
