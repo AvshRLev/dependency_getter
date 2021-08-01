@@ -126,7 +126,7 @@ class TestUnits(unittest.TestCase):
         version = server.clean_version('0.0.x')
         self.assertEqual(version, '0.0.0')
     
-    @mock.patch('server.requests.get')
+    @mock.patch('data.npm.requests.get')
     def test_get_from_node_api_ok(self, mock_get):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json_data = "Ok"
@@ -134,7 +134,7 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json_data, 'Ok')
 
-    @mock.patch('server.requests.get')
+    @mock.patch('data.npm.requests.get')
     def test_get_from_node_api_not_ok(self, mock_get):
         mock_get.return_value.status_code = 404
         response = server.get_from_node_api('abc/123')
