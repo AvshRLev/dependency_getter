@@ -2,6 +2,7 @@ from flask import Flask, request
 from flask.templating import render_template
 from flask.wrappers import Response
 from dotenv import load_dotenv
+from data.npm import get_from_node_api
 import redis
 import requests
 import json
@@ -52,11 +53,7 @@ def handle_get_request(path):
     return extract_deps(json.loads(response))
 
 
-def get_from_node_api(path):
-    response = requests.get(path)
-    if response.status_code != 200:
-        return {"code": response.status_code, "response": response.json()}    
-    return response
+
 
 def cache_for_one_day(path_string, response):
     redis_client.setex(path_string , 86400, json.dumps(response.json()))
