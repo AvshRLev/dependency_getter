@@ -47,7 +47,7 @@ class TestAPI(unittest.TestCase):
         # Check correct path was called
         self.assertIn(mock.call('https://registry.npmjs.org/find-up/3.0.0'), mock_get.call_args_list)
         # Check response was cached
-        self.assertEqual(server.get_from_cache('find-up/3.0.0', redis_client)[0:30], '{"dependencies": {"locate-path')
+        self.assertEqual(server.get_from_cache('find-up/3.0.0')[0:30], '{"dependencies": {"locate-path')
         # Assert one call was made to mocked function
         self.assertEqual(len(mock_get.call_args_list), 1)
 
@@ -78,7 +78,7 @@ class TestAPI(unittest.TestCase):
         # Check correct path was called
         self.assertIn(mock.call('https://registry.npmjs.org/@namespace/find-up/3.0.0'), mock_get.call_args_list)
         # Check response was cached
-        self.assertEqual(server.get_from_cache('find-up/3.0.0', redis_client)[0:30], '{"dependencies": {"locate-path')
+        self.assertEqual(server.get_from_cache('find-up/3.0.0')[0:30], '{"dependencies": {"locate-path')
         # Assert one call was made to mocked function
         self.assertEqual(len(mock_get.call_args_list), 1)
 
