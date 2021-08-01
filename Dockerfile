@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 FROM python:3.7-alpine
 WORKDIR /code
-ENV FLASK_APP=main.py
+ENV FLASK_APP=server.py
 ENV FLASK_RUN_HOST=0.0.0.0
 ENV REDIS='redis'
 RUN apk add --no-cache gcc musl-dev linux-headers
