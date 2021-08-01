@@ -23,12 +23,14 @@ def mocked_get_from_node_api(*args, **kwargs):
         return MockResponse({"dependencies":{"locate-path":"^6.0.0"},"devDependencies":{"ava":"^2.1.0"}}, 200)
     elif args[0] == 'https://registry.npmjs.org/@namespace/find-up/3.0.0':
         return MockResponse({"dependencies":{"locate-path":"^6.0.0"},"devDependencies":{"ava":"^2.1.0"}}, 200)
+    elif args[0] == 'https://registry.npmjs.org/somethingweird/3.0.0':
+        return MockResponse({"dependencies":{100:100},"devDependencies":{True:"^^^^^^"}}, 256)
 
     return MockResponse(None, 404)
 
 class TestAPI(unittest.TestCase):
 
-    
+
     @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
     def test_get_package(self, mock_get):
         # Arrange
@@ -90,6 +92,24 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(second_call.json, {'deps': {'locate-path': '^6.0.0'}, 'devDeps': {'ava': '^2.1.0'}})
         # Assert no other call was made to mocked function
         self.assertEqual(len(mock_get.call_args_list), 1)
+
+    @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
+    def test_non_existing_package(self, mock_get):
+        main.app.testing = True
+        self.app = main.app.test_client()
+        redis_client.delete('non-existent-package/3.3.3')
+        response = self.app.get('non-existent-package/3.3.3')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.data, b'This has returned None')
+
+    @mock.patch('main.get_from_node_api', side_effect=mocked_get_from_node_api)
+    def test_weird_return_value_package(self, mock_get):
+        main.app.testing = True
+        self.app = main.app.test_client()
+        redis_client.delete('somethingweird/3.0.0')
+        response = self.app.get('somethingweird/3.0.0')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {'deps': {'100': 100}, 'devDeps': {'true': '^^^^^^'}})
 
 if __name__ == "__main__":
     unittest.main()
