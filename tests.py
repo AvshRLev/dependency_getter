@@ -1,4 +1,3 @@
-import requests
 import unittest
 from unittest import mock
 import server
@@ -17,12 +16,11 @@ def mocked_get_from_node_api(*args, **kwargs):
 
         def json(self):
             return self.json_data
-
-    if args[0] == 'https://registry.npmjs.org/find-up/3.0.0':
+    if args[0] == 'find-up/3.0.0':
         return MockResponse({"dependencies":{"locate-path":"^6.0.0"},"devDependencies":{"ava":"^2.1.0"}}, 200)
-    elif args[0] == 'https://registry.npmjs.org/@namespace/find-up/3.0.0':
+    elif args[0] == '@namespace/find-up/3.0.0':
         return MockResponse({"dependencies":{"locate-path":"^6.0.0"},"devDependencies":{"ava":"^2.1.0"}}, 200)
-    elif args[0] == 'https://registry.npmjs.org/somethingweird/3.0.0':
+    elif args[0] == 'somethingweird/3.0.0':
         return MockResponse({"dependencies":{100:100},"devDependencies":{True:"^^^^^^"}}, 256)
 
     return MockResponse(None, 404)
@@ -45,7 +43,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {'deps': {'locate-path': '^6.0.0'}, 'devDeps': {'ava': '^2.1.0'}})
         # Check correct path was called
-        self.assertIn(mock.call('https://registry.npmjs.org/find-up/3.0.0'), mock_get.call_args_list)
+        self.assertIn(mock.call('find-up/3.0.0'), mock_get.call_args_list)
         # Check response was cached
         self.assertEqual(server.get_from_cache('find-up/3.0.0')[0:30], '{"dependencies": {"locate-path')
         # Assert one call was made to mocked function
@@ -76,7 +74,7 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json(), {'deps': {'locate-path': '^6.0.0'}, 'devDeps': {'ava': '^2.1.0'}})
         # Check correct path was called
-        self.assertIn(mock.call('https://registry.npmjs.org/@namespace/find-up/3.0.0'), mock_get.call_args_list)
+        self.assertIn(mock.call('@namespace/find-up/3.0.0'), mock_get.call_args_list)
         # Check response was cached
         self.assertEqual(server.get_from_cache('find-up/3.0.0')[0:30], '{"dependencies": {"locate-path')
         # Assert one call was made to mocked function
@@ -128,7 +126,7 @@ class TestUnits(unittest.TestCase):
         version = server.clean_version('0.0.x')
         self.assertEqual(version, '0.0.0')
     
-    @mock.patch('server.requests.get')
+    @mock.patch('data.npm.requests.get')
     def test_get_from_node_api_ok(self, mock_get):
         mock_get.return_value.status_code = 200
         mock_get.return_value.json_data = "Ok"
@@ -136,7 +134,7 @@ class TestUnits(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json_data, 'Ok')
 
-    @mock.patch('server.requests.get')
+    @mock.patch('data.npm.requests.get')
     def test_get_from_node_api_not_ok(self, mock_get):
         mock_get.return_value.status_code = 404
         response = server.get_from_node_api('abc/123')
