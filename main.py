@@ -1,5 +1,6 @@
 from flask import Flask, request
 from flask.templating import render_template
+from flask.wrappers import Response
 from dotenv import load_dotenv
 import redis
 import requests
@@ -79,6 +80,8 @@ def clean_version(version):
     return version
 
 def extract_deps(response):
+    if response == None:
+        return Response("This has returned None", 404)
     deps = {}
     devDeps = {}
     if 'dependencies' in response:
